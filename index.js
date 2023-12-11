@@ -647,7 +647,7 @@ app.post("/forgot-password", async (req, res) => {
                 <p>Terima Kasih</p>
               </div>
               <div class="footer">
-                &copy; ${new Date().getFullYear()} omYoo Studio
+                &copy; ${new Date().getFullYear()} IKKEA SHOP
               </div>
             </div>
           </body>
