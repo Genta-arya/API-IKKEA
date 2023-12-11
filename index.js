@@ -506,10 +506,29 @@ app.post("/get-username", (req, res) => {
   });
 });
 
+app.post("/get-history", (req, res) => {
+    const { username } = req.body;
+  
+    // Query to get payment history directly based on the provided username
+    const getHistoryQuery = "SELECT * FROM pay WHERE username = ?";
+    db.query(getHistoryQuery, [username], (error, results) => {
+      if (error) {
+        console.error(error);
+        res.sendStatus(500);
+      } else {
+        if (results.length === 0) {
+          res.status(404).json({ message: "No payment history found for the provided username" });
+        } else {
+          res.status(200).json({ paymentHistory: results });
+        }
+      }
+    });
+  });
+  
+
 app.post("/register", (req, res) => {
   const { username, password, email } = req.body;
 
-  // Check if the email is already in use
   const checkEmailQuery = "SELECT COUNT(*) AS count FROM user WHERE email = ?";
   db.query(checkEmailQuery, [email], (emailCheckError, emailCheckResults) => {
     if (emailCheckError) {
