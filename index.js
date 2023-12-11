@@ -274,19 +274,15 @@ app.post("/order", async (req, res) => {
       .json({ error: "Please provide valid order details" });
   }
 
-  // Menggunakan UUID sebagai order_id
   const order_id = generateOrderId();
 
-  // Nilai tukar kurs dari dollar ke rupiah
-  const exchangeRate = 15000; // Gantilah dengan nilai tukar kurs yang sesuai
+  const exchangeRate = 15000;
 
-  // Mengonversi harga dari dollar ke rupiah
   const convertToIDR = (priceInDollar) => {
     return priceInDollar * exchangeRate;
   };
 
   try {
-    // Membuat array untuk menyimpan token pembayaran (snap) dan data transaksi
     const transactionsData = await Promise.all(
       items.map(async (item) => {
         const priceInIDR = convertToIDR(item.price);
@@ -299,7 +295,7 @@ app.post("/order", async (req, res) => {
           },
           customer_details: {
             email: email,
-            first_name: "Testing",
+            first_name: item.username,
           },
         };
 
@@ -318,19 +314,17 @@ app.post("/order", async (req, res) => {
             price: priceInIDR,
             qty: item.qty,
             email: email,
+            username: item.username,
           },
         };
       })
     );
 
-    // Menyimpan data transaksi ke dalam tabel pay
     const insertOrderQuery =
-      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time , username) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ?)";
 
-    // Execute the SQL queries using Promise.all
     await Promise.all(
       transactionsData.map(async (transactionData) => {
-        // Insert order data into the database
         const { snapTransaction, itemData } = transactionData;
 
         await new Promise((resolve, reject) => {
@@ -507,24 +501,24 @@ app.post("/get-username", (req, res) => {
 });
 
 app.post("/get-history", (req, res) => {
-    const { username } = req.body;
-  
-    // Query to get payment history directly based on the provided username
-    const getHistoryQuery = "SELECT * FROM pay WHERE username = ?";
-    db.query(getHistoryQuery, [username], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.sendStatus(500);
+  const { username } = req.body;
+
+  const getHistoryQuery = "SELECT * FROM pay WHERE username = ?";
+  db.query(getHistoryQuery, [username], (error, results) => {
+    if (error) {
+      console.error(error);
+      res.sendStatus(500);
+    } else {
+      if (results.length === 0) {
+        res.status(404).json({
+          message: "No payment history found for the provided username",
+        });
       } else {
-        if (results.length === 0) {
-          res.status(404).json({ message: "No payment history found for the provided username" });
-        } else {
-          res.status(200).json({ paymentHistory: results });
-        }
+        res.status(200).json({ paymentHistory: results });
       }
-    });
+    }
   });
-  
+});
 
 app.post("/register", (req, res) => {
   const { username, password, email } = req.body;
