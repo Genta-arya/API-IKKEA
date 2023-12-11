@@ -507,26 +507,56 @@ app.post("/get-username", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  const { username, email, password } = req.body;
-  const checkQuery = "SELECT * FROM user WHERE email = ?";
-  db.query(checkQuery, [email], (error, results) => {
-    if (error) {
-      response(500, null, "Internal Server Error", res);
-    } else {
-      if (results.length > 0) {
-        response(400, null, "Email already exists", res);
-      } else {
-        const insertQuery =
-          "INSERT INTO user (username, email, password) VALUES (?, ?, ?)";
-        db.query(insertQuery, [username, email, password], (error, results) => {
-          if (error) {
-            response(500, null, "Internal Server Error", res);
-          } else {
-            response(200, null, "Registration Berhasil", res);
-          }
-        });
-      }
+  const { username, password, email } = req.body;
+
+  // Check if the email is already in use
+  const checkEmailQuery = "SELECT COUNT(*) AS count FROM user WHERE email = ?";
+  db.query(checkEmailQuery, [email], (emailCheckError, emailCheckResults) => {
+    if (emailCheckError) {
+      console.error("Error checking email:", emailCheckError);
+      return res.sendStatus(500);
     }
+
+    const emailCount = emailCheckResults[0].count;
+
+    if (emailCount > 0) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    // Continue with username uniqueness check
+    const checkUsernameQuery =
+      "SELECT COUNT(*) AS count FROM user WHERE username = ?";
+    db.query(checkUsernameQuery, [username], (checkError, checkResults) => {
+      if (checkError) {
+        console.error("Error checking username:", checkError);
+        return res.sendStatus(500);
+      }
+
+      const usernameCount = checkResults[0].count;
+
+      if (usernameCount > 0) {
+        return res.status(400).json({ error: "Username already in use" });
+      }
+
+      // If both email and username are not in use, proceed with registration
+      const uid = generateUID();
+      const insertUserQuery =
+        "INSERT INTO user (uid, username, email, password) VALUES (?, ?, ?, ?)";
+
+      db.query(
+        insertUserQuery,
+        [uid, username, email, password],
+        (insertError, insertResults) => {
+          if (insertError) {
+            console.error("Error registering user:", insertError);
+            return res.sendStatus(500);
+          } else {
+            console.log("User successfully registered");
+            return res.sendStatus(200);
+          }
+        }
+      );
+    });
   });
 });
 
