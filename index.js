@@ -2,16 +2,23 @@ const express = require("express");
 const db = require("./koneksi");
 const bodyParser = require("body-parser");
 const app = express();
-const port = 3005;
+const port = 3001;
+const { createServer } = require("http");
+const http = require("http");
+const httpServer = createServer(app);
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-
+const { Server } = require("socket.io");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
 const midtransClient = require("midtrans-client");
+
+const io = new Server(httpServer, { cors: "http://localhost:5173/" });
+
 
 function generateUID() {
   const timestamp = new Date().getTime().toString();
@@ -19,6 +26,26 @@ function generateUID() {
   const uid = timestamp + randomString;
   return uid;
 }
+
+
+io.on("connection", (socket) => {
+    console.log("A user connected");
+  
+    // ...
+  
+    // Contoh: Kirim pembaruan riwayat belanja
+    socket.on("updateShoppingHistory", (updatedHistory) => {
+      io.emit("shoppingHistoryUpdate", { paymentHistory: updatedHistory });
+    });
+  
+    // ...
+  
+    socket.on("disconnect", () => {
+      console.log("User disconnected");
+    });
+  });
+// httpServer.listen(3001);
+
 
 function userenticate(req, res, next) {
   const userToken = req.headers.userorization;
@@ -44,212 +71,6 @@ app.get("/orders", userenticate, (req, res) => {
     }
   });
 });
-
-// app.post("/order", async (req, res) => {
-//   const { id_product, nm_product, price, qty, email, time, image } = req.body;
-
-//   if (!id_product || !nm_product || !price || !email) {
-//     console.log("Please fill in all fields");
-//     return res.status(400).json({ error: "Please fill in all fields" });
-//   }
-//   console.log(price);
-
-//   const snap = new midtransClient.Snap({
-//     isProduction: false,
-//     serverKey: "SB-Mid-server-BGYfA4SBqkbbDqAgycBbBqIB",
-//     clientKey: "SB-Mid-client-LAESY4DvSHanXr5C",
-//   });
-
-//   const transactionDetails = {
-//     order_id: `ORDER_${Math.round(Math.random() * 100000)}`,
-//     gross_amount: price,
-//     email: email,
-//   };
-
-//   const transaction = {
-//     transaction_details: transactionDetails,
-//     customer_details: {
-//       email: email,
-//       first_name: "Testing",
-//     },
-//   };
-
-//   try {
-//     const transactionToken = await snap.createTransaction(transaction);
-//     const paymentToken = transactionToken.token;
-//     console.log("Payment token:", paymentToken);
-//     const maxLength = 50;
-//     const trimmedName = nm_product.substring(0, maxLength);
-
-//     const paymentData = {
-//       transaction_details: transactionDetails,
-//       customer_details: {
-//         email: email,
-//         first_name: "Testing",
-//       },
-//       seller_details: {
-//         id: "sellerId-01",
-//         name: "Ario Novrian",
-//         email: "omyoo@studio.com",
-//         url: "https://www.omyoo-studio.online/",
-//         address: {
-//           first_name: "Ario",
-//           last_name: "Novrian",
-//           phone: "089680768061",
-//           address: "Jl Karya Tani",
-//           city: "Ketapang",
-//           postal_code: "78813",
-//           country_code: "IDN",
-//         },
-//       },
-//       item_details: [
-//         {
-//           price: price,
-//           quantity: qty,
-//           name: trimmedName,
-//         },
-//       ],
-//     };
-
-//     const paymentResponse = await snap.createTransaction(paymentData);
-//     const redirectUrl = paymentResponse.redirect_url;
-
-//     const insertOrderQuery =
-//       "INSERT INTO pay (order_id, id_product, image,nm_product, price, qty, email, time) VALUES (?, ?, ?, ?, ?, ?, ?,?)";
-//     const values = [
-//       transactionDetails.order_id,
-//       id_product,
-//       image,
-//       nm_product,
-//       price,
-//       qty,
-//       email,
-//       time,
-//     ];
-
-//     db.query(insertOrderQuery, values, (error, results) => {
-//       if (error) {
-//         console.error("Error placing order:", error);
-//         return res.status(500).json({ error: "Error placing order" });
-//       }
-//       console.log("Order placed successfully:", results);
-
-//       res
-//         .status(200)
-//         .json({ order_id: transactionDetails.order_id, redirectUrl });
-//     });
-//   } catch (error) {
-//     console.error("Failed to create transaction:", error);
-//     res.status(500).json({ error: "Failed to create transaction" });
-//   }
-// });
-
-// app.post("/order", async (req, res) => {
-//     const { items, email } = req.body;
-
-//     if (!items || items.length === 0 || !email) {
-//       console.log("Please provide valid order details");
-//       return res
-//         .status(400)
-//         .json({ error: "Please provide valid order details" });
-//     }
-
-//     // Nilai tukar kurs dari dollar ke rupiah
-//     const exchangeRate = 15000; // Gantilah dengan nilai tukar kurs yang sesuai
-
-//     // Mengonversi harga dari dollar ke rupiah
-//     const convertToIDR = (priceInDollar) => {
-//       return priceInDollar * exchangeRate;
-//     };
-
-//     const snap = new midtransClient.Snap({
-//       isProduction: false,
-//       serverKey: "SB-Mid-server-BGYfA4SBqkbbDqAgycBbBqIB",
-//       clientKey: "SB-Mid-client-LAESY4DvSHanXr5C",
-//     });
-
-//     try {
-//       // Log the entire cart
-//       const transactionTokens = await Promise.all(
-//         items.map(async (item) => {
-//           // Konversi harga dari dollar ke rupiah
-//           const priceInIDR = convertToIDR(item.price);
-
-//           const transaction = {
-//             transaction_details: {
-//               order_id: `ORDER_${Math.round(Math.random() * 100000)}`,
-//               gross_amount: priceInIDR, // Gunakan harga dalam rupiah
-//               email: email,
-//             },
-//             customer_details: {
-//               email: email,
-//               first_name: "Testing",
-//             },
-//             item_details: [
-//               {
-//                 price: priceInIDR, // Gunakan harga dalam rupiah
-//                 quantity: item.qty,
-//                 name: item.nm_product,
-//               },
-//             ],
-//           };
-
-//           console.log("Data to be paid for item:", item);
-//           console.log("Transaction details:", transaction);
-
-//           // Create Midtrans transaction
-//           return await snap.createTransaction(transaction);
-
-//         })
-
-//       );
-//       const insertOrderQuery =
-//       "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-//     const values = [
-//       transaction.transaction_details.order_id,
-//       item.id_product,
-//       item.image,
-//       item.nm_product,
-//       priceInIDR,
-//       item.qty,
-//       email,
-//       // Assuming 'time' is available in the 'item' object
-//     ];
-
-//     // Execute the SQL queries using Promise.all
-//     await Promise.all(
-//       transactionTokens.map(async (transactionToken) => {
-//         // Insert order data into the database
-//         await new Promise((resolve, reject) => {
-//           db.query(insertOrderQuery, values, (error, results) => {
-//             if (error) {
-//               console.error("Error placing order:", error);
-//               reject(error);
-//             } else {
-//               console.log("Order placed successfully:", results);
-//               resolve();
-//             }
-//           });
-//         });
-//       })
-//     );
-
-//       const redirectUrls = transactionTokens.map(
-//         (transactionToken) => transactionToken.redirect_url
-//       );
-
-//       const responseData = {
-//         redirectUrl: redirectUrls.length > 0 ? redirectUrls[0] : null,
-//       };
-
-//       console.log("Response Data:", responseData);
-
-//       res.status(200).json(responseData);
-//     } catch (error) {
-//       console.error("Failed to create transaction:", error);
-//       res.status(500).json({ error: "Failed to create transaction" });
-//     }
-//   });
 
 function generateOrderId() {
   const timestamp = new Date().getTime();
@@ -315,13 +136,14 @@ app.post("/order", async (req, res) => {
             qty: item.qty,
             email: email,
             username: item.username,
+            status: "pending",
           },
         };
       })
     );
 
     const insertOrderQuery =
-      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time , username) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ?)";
+      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time , username , status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ? , ?)";
 
     await Promise.all(
       transactionsData.map(async (transactionData) => {
@@ -363,7 +185,6 @@ app.post("/order", async (req, res) => {
     res.status(500).json({ error: "Failed to process order" });
   }
 });
-
 
 app.get("/order-status/:order_id", (req, res) => {
   const { order_id } = req.params;
@@ -516,6 +337,9 @@ app.post("/get-history", (req, res) => {
           message: "No payment history found for the provided username",
         });
       } else {
+        // Emit the payment history to the connected clients
+        io.emit("shoppingHistoryUpdate", results);
+
         res.status(200).json({ paymentHistory: results });
       }
     }
@@ -749,6 +573,6 @@ app.post("/check-email", (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server berjalan `);
-});
+httpServer.listen(3001, () => {
+    console.log(`Server berjalan `);
+  });
