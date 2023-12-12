@@ -17,7 +17,7 @@ app.use(bodyParser.json());
 
 const midtransClient = require("midtrans-client");
 
-const io = new Server(httpServer, { cors: "http://localhost:5173/" });
+const io = new Server(httpServer, { cors: "https://gentaarya.my.id/" });
 
 
 function generateUID() {
@@ -44,7 +44,6 @@ io.on("connection", (socket) => {
       console.log("User disconnected");
     });
   });
-// httpServer.listen(3001);
 
 
 function userenticate(req, res, next) {
