@@ -366,7 +366,7 @@ app.post("/order", async (req, res) => {
 app.get("/order-status/:order_id", (req, res) => {
   const { order_id } = req.params;
 
-  const getOrderStatusQuery = "SELECT * FROM orders WHERE order_id = ?";
+  const getOrderStatusQuery = "SELECT * FROM pay WHERE order_id = ?";
   const values = [order_id];
 
   db.query(getOrderStatusQuery, values, (error, results) => {
