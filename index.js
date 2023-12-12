@@ -17,7 +17,6 @@ app.use(bodyParser.json());
 
 const midtransClient = require("midtrans-client");
 
-const io = new Server(httpServer, { cors: true });
 
 function generateUID() {
   const timestamp = new Date().getTime().toString();
@@ -26,22 +25,7 @@ function generateUID() {
   return uid;
 }
 
-io.on("connection", (socket) => {
-  console.log("A user connected");
 
-  // ...
-
-  // Contoh: Kirim pembaruan riwayat belanja
-  socket.on("updateShoppingHistory", (updatedHistory) => {
-    io.emit("shoppingHistoryUpdate", { paymentHistory: updatedHistory });
-  });
-
-  // ...
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-});
 // httpServer.listen(3001);
 
 function userenticate(req, res, next) {
@@ -335,8 +319,7 @@ app.post("/get-history", (req, res) => {
         });
       } else {
         // Emit the payment history to the connected clients
-        io.emit("shoppingHistoryUpdate", results);
-
+      
         res.status(200).json({ paymentHistory: results });
       }
     }
@@ -564,9 +547,9 @@ app.post("/jwt", async (req, res) => {
 
     if (results.length > 0) {
       const tokenJWT = results[0].token_jwt;
-      return res.status(200).json({ tokenJWT });
+      return res.status(200).json({ tokenJWT, isLogin: true });
     } else {
-      return res.status(404).send("Token not found");
+      return res.status(404).json({ isLogin: false });
     }
   });
 });
@@ -590,6 +573,6 @@ app.post("/check-email", (req, res) => {
   });
 });
 
-httpServer.listen(3001, () => {
+app.listen(3001, () => {
   console.log(`Server berjalan `);
 });
