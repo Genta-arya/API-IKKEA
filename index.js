@@ -363,6 +363,8 @@ app.post("/order", async (req, res) => {
     res.status(500).json({ error: "Failed to process order" });
   }
 });
+
+
 app.get("/order-status/:order_id", (req, res) => {
   const { order_id } = req.params;
 
@@ -415,7 +417,7 @@ app.post("/midtrans-callback", (req, res) => {
   }
 
   if (status) {
-    const updateStatusQuery = "UPDATE orders SET status = ? WHERE order_id = ?";
+    const updateStatusQuery = "UPDATE pay SET status = ? WHERE order_id = ?";
     const values = [status, order_id];
 
     db.query(updateStatusQuery, values, (error, results) => {
