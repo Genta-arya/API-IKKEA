@@ -417,7 +417,7 @@ app.post("/forgot-password", async (req, res) => {
     const resetToken = generateResetToken();
     console.log(resetToken);
 
-    const insertTokenQuery = `UPDATE auth SET otp = ? WHERE email = ?`;
+    const insertTokenQuery = `UPDATE user SET otp = ? WHERE email = ?`;
     const insertTokenValues = [resetToken, email];
 
     const mailOptions = {
