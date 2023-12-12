@@ -472,7 +472,7 @@ app.post("/forgot-password", async (req, res) => {
                   <p>Terima Kasih</p>
                 </div>
                 <div class="footer">
-                  &copy; ${new Date().getFullYear()} IKKEA
+                  &copy; ${new Date().getFullYear()} HKKS
                 </div>
               </div>
             </body>
