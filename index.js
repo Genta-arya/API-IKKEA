@@ -19,7 +19,6 @@ const midtransClient = require("midtrans-client");
 
 const io = new Server(httpServer, { cors: true });
 
-
 function generateUID() {
   const timestamp = new Date().getTime().toString();
   const randomString = Math.random().toString(36).substring(2, 6);
@@ -27,25 +26,23 @@ function generateUID() {
   return uid;
 }
 
-
 io.on("connection", (socket) => {
-    console.log("A user connected");
-  
-    // ...
-  
-    // Contoh: Kirim pembaruan riwayat belanja
-    socket.on("updateShoppingHistory", (updatedHistory) => {
-      io.emit("shoppingHistoryUpdate", { paymentHistory: updatedHistory });
-    });
-  
-    // ...
-  
-    socket.on("disconnect", () => {
-      console.log("User disconnected");
-    });
-  });
-// httpServer.listen(3001);
+  console.log("A user connected");
 
+  // ...
+
+  // Contoh: Kirim pembaruan riwayat belanja
+  socket.on("updateShoppingHistory", (updatedHistory) => {
+    io.emit("shoppingHistoryUpdate", { paymentHistory: updatedHistory });
+  });
+
+  // ...
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+});
+// httpServer.listen(3001);
 
 function userenticate(req, res, next) {
   const userToken = req.headers.userorization;
@@ -554,6 +551,26 @@ app.post("/update-password", (req, res) => {
   });
 });
 
+app.post("/jwt", async (req, res) => {
+  const { token } = req.body;
+
+  const query = "SELECT username FROM user WHERE token_jwt = ?";
+
+  db.query(query, [token], (error, results) => {
+    if (error) {
+      console.error("Database query error:", error);
+      return res.status(500).send("Internal Server Error");
+    }
+
+    if (results.length > 0) {
+      const tokenJWT = results[0].token_jwt;
+      return res.status(200).json({ tokenJWT });
+    } else {
+      return res.status(404).send("Token not found");
+    }
+  });
+});
+
 app.post("/check-email", (req, res) => {
   const { email } = req.body;
 
@@ -574,5 +591,5 @@ app.post("/check-email", (req, res) => {
 });
 
 httpServer.listen(3001, () => {
-    console.log(`Server berjalan `);
-  });
+  console.log(`Server berjalan `);
+});
