@@ -17,14 +17,12 @@ app.use(bodyParser.json());
 
 const midtransClient = require("midtrans-client");
 
-
 function generateUID() {
   const timestamp = new Date().getTime().toString();
   const randomString = Math.random().toString(36).substring(2, 6);
   const uid = timestamp + randomString;
   return uid;
 }
-
 
 // httpServer.listen(3001);
 
@@ -53,14 +51,11 @@ app.get("/orders", userenticate, (req, res) => {
   });
 });
 
-function generateOrderId() {
-  const timestamp = new Date().getTime();
-  const randomPart = Math.round(Math.random() * 100000);
-  return `IKKEA_${timestamp}_${randomPart}`;
-}
+const generateOrderId = () => {
+  return `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+};
 
 const id = generateOrderId();
-
 app.post("/order", async (req, res) => {
   const { items, email } = req.body;
   const snap = new midtransClient.Snap({
@@ -76,8 +71,6 @@ app.post("/order", async (req, res) => {
       .json({ error: "Please provide valid order details" });
   }
 
-  const order_id = generateOrderId();
-
   const exchangeRate = 15000;
 
   const convertToIDR = (priceInDollar) => {
@@ -87,11 +80,12 @@ app.post("/order", async (req, res) => {
   try {
     const transactionsData = await Promise.all(
       items.map(async (item) => {
+        const order_id_midtrans = generateOrderId(); // Generate unique order_id for Midtrans
         const priceInIDR = convertToIDR(item.price);
 
         const transaction = {
           transaction_details: {
-            order_id: order_id,
+            order_id: order_id_midtrans,
             gross_amount: priceInIDR,
             email: email,
           },
@@ -108,8 +102,9 @@ app.post("/order", async (req, res) => {
 
         return {
           snapTransaction: snapTransaction,
+          order_id_midtrans: order_id_midtrans, // Keep track of order_id for database use
           itemData: {
-            order_id: order_id,
+            order_id: order_id_midtrans,
             id_product: item.id_product,
             image: item.image,
             nm_product: item.nm_product,
@@ -122,9 +117,9 @@ app.post("/order", async (req, res) => {
         };
       })
     );
-
+    const order_id_midtrans = transactionsData[0].order_id_midtrans;
     const insertOrderQuery =
-      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time , username , status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ? , ?)";
+      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email,time, username , status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ? , ?)";
 
     await Promise.all(
       transactionsData.map(async (transactionData) => {
@@ -133,7 +128,18 @@ app.post("/order", async (req, res) => {
         await new Promise((resolve, reject) => {
           db.query(
             insertOrderQuery,
-            Object.values(itemData),
+            [
+              order_id_midtrans,
+              itemData.id_product,
+              itemData.image,
+              itemData.nm_product,
+              itemData.price,
+              itemData.qty,
+              itemData.email,
+
+              itemData.username,
+              itemData.status,
+            ],
             (error, results) => {
               if (error) {
                 console.error("Error placing order:", error);
@@ -150,12 +156,11 @@ app.post("/order", async (req, res) => {
       })
     );
 
-    // Anda dapat melanjutkan dengan mengambil redirect_url atau respons lainnya dari token pembayaran pertama
     const redirectUrl = transactionsData[0].snapTransaction.redirect_url;
 
     const responseData = {
       redirectUrl: redirectUrl,
-      order_id: order_id,
+      order_id: transactionsData[0].order_id_midtrans, // Use the same order_id for the response
     };
 
     console.log("Response Data:", responseData);
@@ -319,7 +324,7 @@ app.post("/get-history", (req, res) => {
         });
       } else {
         // Emit the payment history to the connected clients
-      
+
         res.status(200).json({ paymentHistory: results });
       }
     }

@@ -7,9 +7,18 @@ const dbPool = mysql.createPool({
   password: 'TiNeGhH0Bax414lNtHQ9',
   database: 'bzizaxbwlogkymgc0hfm',
   waitForConnections: true,
-  connectionLimit: 10,
+ 
   queueLimit: 0,
 });
+
+// const dbPool = mysql.createPool({
+//   host: 'localhost',  // Change this to the hostname or IP address of your local MySQL server
+//   user: 'root',  // Replace with your local MySQL username
+//   password: '',  // Replace with your local MySQL password
+//   database: 'bzizaxbwlogkymgc0hfm',  // Replace with the name of your local MySQL database
+//   waitForConnections: true,
+//   queueLimit: 0,
+// });
 
 function handleDisconnect() {
   dbPool.getConnection((err, connection) => {
