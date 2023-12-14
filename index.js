@@ -260,12 +260,14 @@ app.post("/login", (req, res) => {
       } else {
         const user = results[0];
         if (password === user.password) {
+          // Sign the JWT token with a 60-second expiration for testing
           const token = jwt.sign(
             { userId: user.uid, email: user.email },
             "rahasia-kunci-jwt",
-            { expiresIn: "1h" }
+            { expiresIn: "1h" } // Set expiration to 60 seconds for testing
           );
 
+          // Update the user's token in the database
           const insertTokenQuery =
             "UPDATE user SET token_jwt = ? WHERE uid = ?";
           db.query(
@@ -276,12 +278,35 @@ app.post("/login", (req, res) => {
                 console.error(insertError);
                 res.sendStatus(500);
               } else {
-                res
-                  .status(200)
-                  .json({ message: "login", token, username: user.username });
+                // Respond with the token and other user information
+                res.status(200).json({
+                  message: "login",
+                  token,
+                  username: user.username,
+                  uid: user.uid,
+                });
               }
             }
           );
+
+          // Schedule a task to clear the token after 60 seconds (for testing)
+          setTimeout(() => {
+            const clearTokenQuery =
+              "UPDATE user SET token_jwt = NULL WHERE uid = ?";
+            db.query(
+              clearTokenQuery,
+              [user.uid],
+              (clearError, clearResults) => {
+                if (clearError) {
+                  console.error(clearError);
+                  // Handle the error accordingly
+                } else {
+                  // Log or handle the successful token clearance
+                  console.log(`Token cleared for user ${user.uid}`);
+                }
+              }
+            );
+          }, 60 * 60 * 1000); // Adjusted to 60 seconds for testing
         } else {
           res.status(401).json({ message: "Email atau password salah" });
         }
@@ -305,6 +330,21 @@ app.post("/get-username", (req, res) => {
         const username = results[0].username;
         res.status(200).json({ username });
       }
+    }
+  });
+});
+
+app.post("/voucher", (req, res) => {
+  const { user_uid } = req.body;
+
+  const query = "SELECT * FROM voucher WHERE user_uid = ?";
+
+  db.query(query, [user_uid], (err, results) => {
+    if (err) {
+      console.error("Error querying database:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    } else {
+      res.status(200).json(results);
     }
   });
 });
@@ -376,13 +416,113 @@ app.post("/register", (req, res) => {
             return res.sendStatus(500);
           } else {
             console.log("User successfully registered");
-            return res.sendStatus(200);
+
+            // Setelah pengguna terdaftar, berikan voucher
+            const voucherCode = generateVoucherCode();
+            const discountPercentage = 0.1; // Sesuaikan dengan kebutuhan Anda
+            const expirationDate = "2023-12-31"; // Sesuaikan dengan kebutuhan Anda
+            const title = "new customer";
+            const insertVoucherQuery = `
+              INSERT INTO voucher (user_uid, voucher_code, discount_percentage, expiration_date, title , created_at)
+              VALUES (?, ?, ?, ?,?, NOW())
+            `;
+
+            db.query(
+              insertVoucherQuery,
+              [uid, voucherCode, discountPercentage, expirationDate, title],
+              (voucherInsertError, voucherInsertResults) => {
+                if (voucherInsertError) {
+                  console.error("Error inserting voucher:", voucherInsertError);
+                  return res.sendStatus(500);
+                } else {
+                  console.log("Voucher successfully added");
+                  return res.sendStatus(200);
+                }
+              }
+            );
           }
         }
       );
     });
   });
 });
+
+function generateVoucherCode() {
+  const prefix = "SUBSCRIBE_DEA_AFRIZAL_";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const codeLength = 5;
+
+  let voucherCode = prefix;
+  for (let i = 0; i < codeLength; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    voucherCode += characters.charAt(randomIndex);
+  }
+
+  return voucherCode;
+}
+app.post("/check-vouchers", async (req, res) => {
+  const voucherCode = req.body.voucherCode;
+
+  if (!voucherCode) {
+    return res.status(400).json({ error: "Voucher code is required." });
+  }
+
+  try {
+    db.query(
+      "SELECT user_uid, discount_percentage, is_used FROM voucher WHERE voucher_code = ?",
+      [voucherCode],
+      (error, rows) => {
+        if (error) {
+          console.error("Database error:", error);
+          return res.status(500).json({ error: "Internal server error." });
+        }
+
+        if (rows.length === 0) {
+          return res.status(404).json({ error: "Voucher not found." });
+        }
+
+        const voucherData = {
+          userUid: rows[0].user_uid,
+          discountPercentage: rows[0].discount_percentage,
+          isUsed: rows[0].is_used,
+        };
+
+        // Check if the voucher is already used
+        if (voucherData.isUsed) {
+          return res.status(403).json({ error: "Voucher is already used." });
+        }
+
+        res.json(voucherData);
+      }
+    );
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+app.post("/update-voucher", async (req, res) => {
+  const { voucherCode } = req.body;
+
+  try {
+    // Use a parameterized query to update the voucher status
+    const updateResult = await db.query(
+      "UPDATE voucher SET is_used = true WHERE voucher_code = ?",
+      [voucherCode]
+    );
+
+    // Check the result of the update
+    if (updateResult.affectedRows > 0) {
+      res.json({ message: "Voucher marked as used successfully" });
+    } else {
+      res.status(404).json({ message: "Voucher not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   const transporter = nodemailer.createTransport({
