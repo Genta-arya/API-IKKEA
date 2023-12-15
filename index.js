@@ -51,11 +51,124 @@ app.get("/orders", userenticate, (req, res) => {
   });
 });
 
+function convertToIDR(priceInDollar) {
+  const exchangeRate = 15000;
+  return priceInDollar * exchangeRate;
+}
+
+app.get("/orders", userenticate, (req, res) => {
+  const getUsersQuery = "SELECT * FROM orders";
+  db.query(getUsersQuery, (error, results) => {
+    if (error) {
+      console.error(error);
+      res.sendStatus(500);
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
 const generateOrderId = () => {
   return `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 };
 
-const id = generateOrderId();
+const snap = new midtransClient.Snap({
+  isProduction: false,
+  serverKey: "SB-Mid-server-BGYfA4SBqkbbDqAgycBbBqIB",
+  clientKey: "SB-Mid-client-LAESY4DvSHanXr5C",
+});
+
+app.post("/api/create-payment", async (req, res) => {
+  try {
+    const orderDetails = req.body;
+    const { email, items, username } = orderDetails;
+    const status = "pending"; // You may set the initial status here
+    console.log("Data from frontend:", orderDetails);
+    let grossAmount = 0;
+
+    for (const item of orderDetails.items) {
+      // Konversi item.price ke IDR
+      const priceInIDR = item.price * 15000;
+
+      // Periksa apakah priceInIDR dan item.qty adalah angka
+      if (!isNaN(priceInIDR) && !isNaN(item.qty)) {
+        grossAmount += priceInIDR * item.qty;
+      } else {
+        throw new Error("Invalid price or quantity");
+      }
+    }
+    if (isNaN(grossAmount)) {
+      throw new Error("Invalid gross_amount");
+    }
+
+    const transactionDetails = {
+      order_id: `ORDER-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      gross_amount: grossAmount.toFixed(2),
+    };
+
+    const firstItem = orderDetails.items[0];
+    const customerDetails = {
+      email: orderDetails.email,
+      first_name: firstItem.username,
+    };
+
+    const response = await snap.createTransaction({
+      transaction_details: {
+        ...transactionDetails,
+        email: orderDetails.email,
+      },
+      item_details: orderDetails.items.map((item) => ({
+        id: item.id_product,
+        price: (item.price * 15000).toFixed(2),
+        quantity: item.qty,
+        name: item.nm_product,
+      })),
+      customer_details: customerDetails,
+      seller_details: {
+        id: "sellerId-01",
+        name: "Ario Novrian",
+        email: "omyoo@studio.com",
+        url: "https://www.omyoo-studio.online/",
+        address: {
+          first_name: "Ario",
+          last_name: "Novrian",
+          phone: "089680768061",
+          address: "Jl Karya Tani",
+          city: "Ketapang",
+          postal_code: "78813",
+          country_code: "IDN",
+        },
+      },
+    });
+
+    const paymentLink = response.redirect_url;
+
+    // Memasukkan data ke dalam database
+    for (const item of orderDetails.items) {
+      await db.query(
+        "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time, username, status, link) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)",
+        [
+          transactionDetails.order_id,
+          item.id_product,
+          item.image,
+          item.nm_product,
+          (item.price * item.qty * 15000).toFixed(2),
+          item.qty,
+          orderDetails.email,
+          item.username,
+          status,
+          paymentLink,
+        ]
+      );
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error("Error handling request:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.post("/order", async (req, res) => {
   const { items, email } = req.body;
   const snap = new midtransClient.Snap({
@@ -253,22 +366,23 @@ app.post("/login", (req, res) => {
   db.query(getUserQuery, [email], (error, results) => {
     if (error) {
       console.error(error);
-      return res
-        .status(500)
-        .json({ message: "Server Error, Please wait and try again" , status:500 });
+      return res.status(500).json({
+        message: "Server Error, Please wait and try again",
+        status: 500,
+      });
     } else {
       if (results.length === 0) {
-        return res
-          .status(401)
-          .json({ message: "Authentication failed: Email not found" , status:401 });
+        return res.status(401).json({
+          message: "Authentication failed: Email not found",
+          status: 401,
+        });
       } else {
         const user = results[0];
         if (password === user.password) {
-         
           const token = jwt.sign(
             { userId: user.uid, email: user.email },
             "rahasia-kunci-jwt",
-            { expiresIn: "1h" } 
+            { expiresIn: "1h" }
           );
 
           // Update the user's token in the database
@@ -314,9 +428,10 @@ app.post("/login", (req, res) => {
             );
           }, 60 * 60 * 1000); // Adjusted to 60 seconds for testing
         } else {
-          return res
-            .status(401)
-            .json({ message: "Authentication failed: Incorrect password" , status:401 });
+          return res.status(401).json({
+            message: "Authentication failed: Incorrect password",
+            status: 401,
+          });
         }
       }
     }
