@@ -264,11 +264,11 @@ app.post("/login", (req, res) => {
       } else {
         const user = results[0];
         if (password === user.password) {
-          // Sign the JWT token with a 60-second expiration for testing
+         
           const token = jwt.sign(
             { userId: user.uid, email: user.email },
             "rahasia-kunci-jwt",
-            { expiresIn: "1h" } // Set expiration to 60 seconds for testing
+            { expiresIn: "1h" } 
           );
 
           // Update the user's token in the database
@@ -316,7 +316,7 @@ app.post("/login", (req, res) => {
         } else {
           return res
             .status(401)
-            .json({ message: "Authentication failed: Incorrect password" , status:500 });
+            .json({ message: "Authentication failed: Incorrect password" , status:401 });
         }
       }
     }
