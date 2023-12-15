@@ -126,12 +126,12 @@ app.post("/api/create-payment", async (req, res) => {
       customer_details: customerDetails,
       seller_details: {
         id: "sellerId-01",
-        name: "Ario Novrian",
-        email: "omyoo@studio.com",
-        url: "https://www.omyoo-studio.online/",
+        name: "Gentha Arya Pratama",
+        email: "hkks@shop.com",
+        url: "https://www.hkks.shop/",
         address: {
-          first_name: "Ario",
-          last_name: "Novrian",
+          first_name: "Gentha",
+          last_name: "Arya",
           phone: "089680768061",
           address: "Jl Karya Tani",
           city: "Ketapang",
