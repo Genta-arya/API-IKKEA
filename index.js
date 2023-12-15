@@ -253,7 +253,7 @@ app.post("/login", (req, res) => {
   db.query(getUserQuery, [email], (error, results) => {
     if (error) {
       console.error(error);
-      res.sendStatus(500);
+      res.sendStatus(500).json({ message: "Server Error , Please wait and try again" });
     } else {
       if (results.length === 0) {
         res.status(401).json({ message: "Email atau password salah" });
@@ -276,7 +276,8 @@ app.post("/login", (req, res) => {
             (insertError, insertResults) => {
               if (insertError) {
                 console.error(insertError);
-                res.sendStatus(500);
+                
+                res.sendStatus(500).json({ message: "Server Error , Please wait and try again" });
               } else {
                 // Respond with the token and other user information
                 res.status(200).json({
