@@ -253,10 +253,14 @@ app.post("/login", (req, res) => {
   db.query(getUserQuery, [email], (error, results) => {
     if (error) {
       console.error(error);
-      res.status(500).json({ message: "Server Error , Please wait and try again" });
+      return res
+        .status(500)
+        .json({ message: "Server Error, Please wait and try again" });
     } else {
       if (results.length === 0) {
-        res.status(401).json({ message: "Email atau password salah" });
+        return res
+          .status(401)
+          .json({ message: "Authentication failed: Email not found" });
       } else {
         const user = results[0];
         if (password === user.password) {
@@ -276,12 +280,13 @@ app.post("/login", (req, res) => {
             (insertError, insertResults) => {
               if (insertError) {
                 console.error(insertError);
-                
-                res.status(500).json({ message: "Server Error , Please wait and try again" });
+                return res
+                  .status(500)
+                  .json({ message: "Server Error, Please wait and try again" });
               } else {
                 // Respond with the token and other user information
-                res.status(200).json({
-                  message: "login",
+                return res.status(200).json({
+                  message: "Login successful",
                   token,
                   username: user.username,
                   uid: user.uid,
@@ -309,7 +314,9 @@ app.post("/login", (req, res) => {
             );
           }, 60 * 60 * 1000); // Adjusted to 60 seconds for testing
         } else {
-          res.status(401).json({ message: "Email atau password salah" });
+          return res
+            .status(401)
+            .json({ message: "Authentication failed: Incorrect password" });
         }
       }
     }
