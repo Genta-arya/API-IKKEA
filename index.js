@@ -255,12 +255,12 @@ app.post("/login", (req, res) => {
       console.error(error);
       return res
         .status(500)
-        .json({ message: "Server Error, Please wait and try again" });
+        .json({ message: "Server Error, Please wait and try again" , status:500 });
     } else {
       if (results.length === 0) {
         return res
           .status(401)
-          .json({ message: "Authentication failed: Email not found" });
+          .json({ message: "Authentication failed: Email not found" , status:401 });
       } else {
         const user = results[0];
         if (password === user.password) {
@@ -316,7 +316,7 @@ app.post("/login", (req, res) => {
         } else {
           return res
             .status(401)
-            .json({ message: "Authentication failed: Incorrect password" });
+            .json({ message: "Authentication failed: Incorrect password" , status:500 });
         }
       }
     }
