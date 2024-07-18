@@ -2,10 +2,10 @@ const mysql = require('mysql2');
 const util = require('util');
 
 const dbPool = mysql.createPool({
-  host: 'bzizaxbwlogkymgc0hfm-mysql.services.clever-cloud.com',
-  user: 'ud4bcst5oh325rxe',
-  password: 'TiNeGhH0Bax414lNtHQ9',
-  database: 'bzizaxbwlogkymgc0hfm',
+  host: 'afyung.shop',
+  user: 'afyungs2_shop',
+  password: 'genta456',
+  database: 'afyungs2_shop',
   waitForConnections: true,
  
   queueLimit: 0,
