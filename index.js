@@ -113,7 +113,10 @@ app.post("/api/create-payment", async (req, res) => {
     };
 
     const response = await snap.createTransaction({
-      transaction_details: transactionDetails,
+      transaction_details: {
+        ...transactionDetails,
+        email: orderDetails.email,
+      },
       item_details: orderDetails.items.map((item) => ({
         id: item.id_product,
         price: (item.price * 15000).toFixed(2),
@@ -140,13 +143,7 @@ app.post("/api/create-payment", async (req, res) => {
 
     const paymentLink = response.redirect_url;
 
-    // Memasukkan data ke dalam tabel orders
-    await db.query(
-      "INSERT INTO orders (order_id, email, time, status) VALUES (?, ?, NOW(), ?)",
-      [transactionDetails.order_id, orderDetails.email, status]
-    );
-
-    // Memasukkan data ke dalam tabel pay
+    // Memasukkan data ke dalam database
     for (const item of orderDetails.items) {
       await db.query(
         "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time, username, status, link) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)",
@@ -171,7 +168,6 @@ app.post("/api/create-payment", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 app.post("/order", async (req, res) => {
   const { items, email } = req.body;
