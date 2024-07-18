@@ -140,7 +140,13 @@ app.post("/api/create-payment", async (req, res) => {
 
     const paymentLink = response.redirect_url;
 
-    // Memasukkan data ke dalam database
+    // Memasukkan data ke dalam tabel orders
+    await db.query(
+      "INSERT INTO orders (order_id, email, time, status) VALUES (?, ?, NOW(), ?)",
+      [transactionDetails.order_id, orderDetails.email, status]
+    );
+
+    // Memasukkan data ke dalam tabel pay
     for (const item of orderDetails.items) {
       await db.query(
         "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time, username, status, link) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)",
@@ -165,12 +171,21 @@ app.post("/api/create-payment", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
 app.post("/order", async (req, res) => {
   const { items, email } = req.body;
+  const snap = new midtransClient.Snap({
+    isProduction: false,
+    serverKey: "SB-Mid-server-BGYfA4SBqkbbDqAgycBbBqIB",
+    clientKey: "SB-Mid-client-LAESY4DvSHanXr5C",
+  });
 
   if (!items || items.length === 0 || !email) {
     console.log("Please provide valid order details");
-    return res.status(400).json({ error: "Please provide valid order details" });
+    return res
+      .status(400)
+      .json({ error: "Please provide valid order details" });
   }
 
   const exchangeRate = 15000;
@@ -221,7 +236,7 @@ app.post("/order", async (req, res) => {
     );
     const order_id_midtrans = transactionsData[0].order_id_midtrans;
     const insertOrderQuery =
-      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time, username, status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
+      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email,time, username , status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ? , ?)";
 
     await Promise.all(
       transactionsData.map(async (transactionData) => {
@@ -238,6 +253,7 @@ app.post("/order", async (req, res) => {
               itemData.price,
               itemData.qty,
               itemData.email,
+
               itemData.username,
               itemData.status,
             ],
