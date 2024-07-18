@@ -113,10 +113,7 @@ app.post("/api/create-payment", async (req, res) => {
     };
 
     const response = await snap.createTransaction({
-      transaction_details: {
-        ...transactionDetails,
-        email: orderDetails.email,
-      },
+      transaction_details: transactionDetails,
       item_details: orderDetails.items.map((item) => ({
         id: item.id_product,
         price: (item.price * 15000).toFixed(2),
@@ -168,20 +165,12 @@ app.post("/api/create-payment", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 app.post("/order", async (req, res) => {
   const { items, email } = req.body;
-  const snap = new midtransClient.Snap({
-    isProduction: false,
-    serverKey: "SB-Mid-server-BGYfA4SBqkbbDqAgycBbBqIB",
-    clientKey: "SB-Mid-client-LAESY4DvSHanXr5C",
-  });
 
   if (!items || items.length === 0 || !email) {
     console.log("Please provide valid order details");
-    return res
-      .status(400)
-      .json({ error: "Please provide valid order details" });
+    return res.status(400).json({ error: "Please provide valid order details" });
   }
 
   const exchangeRate = 15000;
@@ -232,7 +221,7 @@ app.post("/order", async (req, res) => {
     );
     const order_id_midtrans = transactionsData[0].order_id_midtrans;
     const insertOrderQuery =
-      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email,time, username , status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW() , ? , ?)";
+      "INSERT INTO pay (order_id, id_product, image, nm_product, price, qty, email, time, username, status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
 
     await Promise.all(
       transactionsData.map(async (transactionData) => {
@@ -249,7 +238,6 @@ app.post("/order", async (req, res) => {
               itemData.price,
               itemData.qty,
               itemData.email,
-
               itemData.username,
               itemData.status,
             ],
